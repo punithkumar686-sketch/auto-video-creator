@@ -1,17 +1,42 @@
+import random
+
 def generate_script():
 
-    hook = "Can you solve this in 3 seconds? Most kids can’t!"
+    hooks = [
+        "Can you solve this in 3 seconds?",
+        "Only smart people can solve this fast!",
+        "Try this brain trick!",
+    ]
 
-    body = """
-Try this: 47 + 25
+    problems = [
+        (47, 25),
+        (68, 37),
+        (59, 26),
+        (84, 19),
+    ]
+
+    a, b = random.choice(problems)
+
+    # smart trick logic
+    rounded = ((a // 10) + 1) * 10
+    add = rounded + b
+    diff = rounded - a
+    answer = add - diff
+
+    script = f"""
+{random.choice(hooks)}
+
+Try this:
+{a} + {b}
 
 Instead of adding normally…
-Add 50 + 25 = 75
-Then subtract 3 → 72
+Add {rounded} + {b} = {add}
+
+Then subtract {diff} → {answer}
 
 Boom! Faster than your teacher!
+
+Follow for more brain tricks!
 """
 
-    cta = "Follow for more brain tricks!"
-
-    return hook + "\n\n" + body + "\n\n" + cta
+    return script
