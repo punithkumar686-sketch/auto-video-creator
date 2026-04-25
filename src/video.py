@@ -3,81 +3,93 @@ import os
 
 def create_video(text, audio_path=None, mode="mobile"):
 
+    # 📁 PATH SETUP (GitHub safe)
     BASE_DIR = os.path.dirname(__file__)
-    output_dir = os.path.abspath(os.path.join(BASE_DIR, "..", "output"))
+    ROOT_DIR = os.path.abspath(os.path.join(BASE_DIR, ".."))
+
+    output_dir = os.path.join(ROOT_DIR, "output")
     os.makedirs(output_dir, exist_ok=True)
 
-    # 📁 Background video (PUT FILE HERE)
-    bg_video_path = os.path.join(BASE_DIR, "background.mp4")
+    bg_video_path = os.path.join(ROOT_DIR, "assets", "background.mp4")
 
-    bg = VideoFileClip(bg_video_path).loop(duration=20)
+    # ❌ SAFETY CHECK
+    if not os.path.exists(bg_video_path):
+        raise FileNotFoundError(f"Background video not found at: {bg_video_path}")
 
-    # 📱 / 🖥 Resolution
+    # 🎬 LOAD BACKGROUND VIDEO
+    bg = VideoFileClip(bg_video_path)
+
+    # 📱 / 🖥 RESOLUTION
     if mode == "mobile":
-        bg = bg.resize((1080, 1920))
+        W, H = 1080, 1920
         font_size = 70
         filename = "mobile_video.mp4"
     else:
-        bg = bg.resize((1920, 1080))
+        W, H = 1920, 1080
         font_size = 60
         filename = "desktop_video.mp4"
 
-    # 🎬 SCREENS
+    bg = bg.resize((W, H))
+
+    # 🎯 SCREENS (VIRAL FLOW)
     screens = [
-        "Can you solve this in 3 seconds?\nMost kids can’t!",
-        "Try this:\n47 + 25",
-        "Instead of adding normally…\nAdd 50 + 25 = 75",
-        "Then subtract 3 → 72\nBoom! Faster than your teacher!\n\nFollow for more brain tricks!"
+        ("Can you solve this in 3 seconds?\nMost kids can’t!", 2.5),
+        ("Try this:\n47 + 25", 2.5),
+        ("Instead of adding normally…\nAdd 50 + 25 = 75", 3),
+        ("Then subtract 3 → 72\nBoom! Faster than your teacher!\n\nFollow for more brain tricks!", 4),
     ]
 
-    # 🔊 AUDIO SPLIT FIX
-    audio = None
-    if audio_path and os.path.exists(audio_path):
-        audio = AudioFileClip(audio_path)
-        total_duration = audio.duration
-    else:
-        total_duration = 12
-
-    per_duration = total_duration / len(screens)
-
     clips = []
+    start = 0
 
-    for i, screen_text in enumerate(screens):
+    # 🎬 CREATE SCREEN CLIPS
+    for screen_text, duration in screens:
 
-        start = i * per_duration
-        end = start + per_duration
+        end = start + duration
 
-        # 🎯 CUT AUDIO PER SCREEN
-        sub_audio = None
-        if audio:
-            sub_audio = audio.subclip(start, end)
+        # Loop background if needed
+        if end > bg.duration:
+            sub_bg = bg.loop(duration=duration)
+        else:
+            sub_bg = bg.subclip(start, end)
 
-        # 🧠 TEXT DESIGN (VISIBLE ON VIDEO)
+        # 🧠 TEXT (CENTERED + SAFE MARGIN)
         txt = TextClip(
             screen_text,
             fontsize=font_size,
             color="white",
             font="DejaVu-Sans-Bold",
             method="caption",
-            size=(bg.w * 0.8, None),
+            size=(int(W * 0.8), None),  # safe margin
             align="center"
         )
 
-        txt = txt.set_position(("center", "center")).set_duration(per_duration)
+        txt = txt.set_position(("center", "center")).set_duration(duration)
 
-        # 🔥 OVERLAY TEXT ON VIDEO
-        video = CompositeVideoClip([bg.subclip(start, end), txt])
-
-        if sub_audio:
-            video = video.set_audio(sub_audio)
-
+        video = CompositeVideoClip([sub_bg, txt])
         clips.append(video)
 
-    final = concatenate_videoclips(clips)
+        start += duration
 
+    # 🎞 MERGE ALL SCREENS
+    final_video = concatenate_videoclips(clips, method="compose")
+
+    # 🔊 AUDIO HANDLING (OPTIONAL)
+    if audio_path and os.path.exists(audio_path):
+        audio = AudioFileClip(audio_path)
+
+        # Loop audio to match video duration
+        if audio.duration < final_video.duration:
+            audio = audio.audio_loop(duration=final_video.duration)
+        else:
+            audio = audio.subclip(0, final_video.duration)
+
+        final_video = final_video.set_audio(audio)
+
+    # 🎥 EXPORT
     video_path = os.path.join(output_dir, filename)
 
-    final.write_videofile(
+    final_video.write_videofile(
         video_path,
         fps=24,
         codec="libx264",
