@@ -1,16 +1,20 @@
 from moviepy.editor import *
+from PIL import Image, ImageDraw, ImageFont
 
 def create_video(text):
-    bg = ColorClip(size=(1080,1920), color=(0,0,0), duration=10)
+    # Create image with text
+    img = Image.new('RGB', (1080, 1920), color=(0, 0, 0))
+    draw = ImageDraw.Draw(img)
 
-    txt = TextClip(
-        text,
-        fontsize=80,
-        color='white',
-        method='caption',
-        size=(900,1600)
-    ).set_position("center").set_duration(10)
+    try:
+        font = ImageFont.truetype("DejaVuSans-Bold.ttf", 80)
+    except:
+        font = ImageFont.load_default()
 
-    final = CompositeVideoClip([bg, txt])
+    draw.text((100, 800), text, font=font, fill=(255, 255, 255))
 
-    final.write_videofile("output/video.mp4", fps=24)
+    img.save("output/frame.png")
+
+    # Convert image to video
+    clip = ImageClip("output/frame.png").set_duration(10)
+    clip.write_videofile("output/video.mp4", fps=24)
