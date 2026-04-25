@@ -1,4 +1,4 @@
-from moviepy.editor import ImageClip, AudioFileClip
+from moviepy import ImageClip, AudioFileClip
 from PIL import Image, ImageDraw, ImageFont
 import os
 
