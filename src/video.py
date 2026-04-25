@@ -7,8 +7,40 @@ from moviepy.editor import (
     concatenate_videoclips,
     AudioFileClip
 )
+
 from PIL import Image, ImageDraw, ImageFont
 
+
+# 🎨 CREATE TEXT IMAGE (FIXED)
+def create_text_image(text, size, font_size):
+
+    img = Image.new("RGBA", size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+
+    try:
+        font = ImageFont.truetype("DejaVuSans-Bold.ttf", font_size)
+    except:
+        font = ImageFont.load_default()
+
+    # Highlight numbers
+    color = (255, 255, 0) if any(c.isdigit() for c in text) else (255, 255, 255)
+
+    bbox = draw.textbbox((0, 0), text, font=font)
+    w = bbox[2] - bbox[0]
+    h = bbox[3] - bbox[1]
+
+    x = (size[0] - w) // 2
+    y = (size[1] - h) // 2
+
+    draw.text((x, y), text, font=font, fill=color)
+
+    path = f"/tmp/{abs(hash(text))}.png"
+    img.save(path)
+
+    return path
+
+
+# 🎬 ANIMATE TEXT (SYNCED)
 def animate_lines(lines, size, font_size, total_duration):
 
     clips = []
@@ -33,6 +65,8 @@ def animate_lines(lines, size, font_size, total_duration):
 
     return clips, total_duration
 
+
+# 🎬 MAIN VIDEO FUNCTION
 def create_video(text, voice_path=None, mode="mobile"):
 
     BASE = os.path.dirname(__file__)
@@ -44,8 +78,13 @@ def create_video(text, voice_path=None, mode="mobile"):
     output_dir = os.path.join(ROOT, "output")
     os.makedirs(output_dir, exist_ok=True)
 
+    # ❗ SAFETY CHECK
+    if not os.path.exists(bg_path):
+        raise FileNotFoundError(f"Background video not found: {bg_path}")
+
     bg = VideoFileClip(bg_path)
 
+    # 📱 / 🖥 MODE
     if mode == "mobile":
         W, H = 1080, 1920
         font_size = 70
@@ -68,15 +107,14 @@ def create_video(text, voice_path=None, mode="mobile"):
         ["Follow for more brain tricks!"]
     ]
 
-    # 🔊 LOAD VOICE FIRST (CRITICAL FOR SYNC)
+    # 🔊 LOAD AUDIO
     audio = None
     if voice_path and os.path.exists(voice_path):
         audio = AudioFileClip(voice_path)
         total_audio_duration = audio.duration
     else:
-        total_audio_duration = len(screens) * 2  # fallback
+        total_audio_duration = len(screens) * 2
 
-    # 🎯 DISTRIBUTE TIME PROPERLY
     per_screen_duration = total_audio_duration / len(screens)
 
     clips = []
@@ -84,17 +122,17 @@ def create_video(text, voice_path=None, mode="mobile"):
 
     for lines in screens:
 
-        # ✅ PASS DURATION HERE (THIS FIXES EVERYTHING)
         text_clips, duration = animate_lines(
             lines, (W, H), font_size, per_screen_duration
         )
 
+        # 🎥 BACKGROUND LOOP
         if start + duration > bg.duration:
             sub_bg = bg.loop(duration=duration)
         else:
             sub_bg = bg.subclip(start, start + duration)
 
-        # 🔥 Smooth zoom
+        # 🔥 ZOOM EFFECT
         sub_bg = sub_bg.resize(lambda t: 1 + 0.02 * t)
 
         video = CompositeVideoClip([sub_bg] + text_clips)
@@ -104,19 +142,18 @@ def create_video(text, voice_path=None, mode="mobile"):
 
     final = concatenate_videoclips(clips, method="compose")
 
-    # 🔊 PERFECT AUDIO SYNC
+    # 🔊 VOICE SYNC
     if audio:
         audio = audio.set_duration(final.duration)
         final = final.set_audio(audio)
 
-    # 🔊 BACKGROUND MUSIC (LOW VOLUME)
+    # 🔊 BACKGROUND MUSIC
     if os.path.exists(music_path):
         music = AudioFileClip(music_path).volumex(0.15)
 
-        if audio:
-            # mix voice + music
-            from moviepy.audio.AudioClip import CompositeAudioClip
+        from moviepy.audio.AudioClip import CompositeAudioClip
 
+        if audio:
             music = music.audio_loop(duration=final.duration)
             final_audio = CompositeAudioClip([audio, music])
             final = final.set_audio(final_audio)
