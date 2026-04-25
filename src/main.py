@@ -5,11 +5,11 @@ from video import create_video
 def main():
 
     script = generate_script()
-    print("SCRIPT:\n", script)
+    print("SCRIPT GENERATED:\n", script)
 
     audio = generate_voice(script)
 
-    # 📱 MOBILE VERSION
+    # 📱 MOBILE VIRAL SHORTS
     mobile_video = create_video(script, audio, mode="mobile")
     print("Mobile video:", mobile_video)
 
