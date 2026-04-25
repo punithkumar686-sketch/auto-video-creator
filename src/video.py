@@ -63,7 +63,7 @@ def create_video(text, audio_path=None, mode="mobile"):
 
         # SCREEN 3 - TRICK STEP
         ("Instead of adding normally…\nAdd 50 + 25 = 75", 3),
-        ("Taking time to add right),
+        ("Taking time to add right", 3),
 
         # SCREEN 4 - FINAL ANSWER + CTA
         ("Then subtract 3 → 72\nBoom! Faster than your teacher!\n\nFollow for more brain tricks!", 4),
