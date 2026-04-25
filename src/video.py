@@ -1,78 +1,3 @@
-from moviepy.editor import (
-    VideoFileClip,
-    ImageClip,
-    CompositeVideoClip,
-    concatenate_videoclips,
-    AudioFileClip
-)
-from PIL import Image, ImageDraw, ImageFont
-import os
-
-# 🎨 TEXT IMAGE
-def create_text_image(text, size, font_size):
-
-    img = Image.new("RGBA", size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-
-    try:
-        font = ImageFont.truetype("DejaVuSans-Bold.ttf", font_size)
-    except:
-        font = ImageFont.load_default()
-
-    color = (255, 255, 0) if any(c.isdigit() for c in text) else (255, 255, 255)
-
-    bbox = draw.textbbox((0, 0), text, font=font)
-    w = bbox[2] - bbox[0]
-    h = bbox[3] - bbox[1]
-
-    x = (size[0] - w) // 2
-    y = (size[1] - h) // 2
-
-    draw.text((x, y), text, font=font, fill=color)
-
-    path = f"/tmp/{abs(hash(text))}.png"
-    img.save(path)
-
-    return path
-
-
-# 🎬 WORD ANIMATION
-def animate_lines(lines, size, font_size):
-
-    clips = []
-    t = 0
-
-    for line in lines:
-        img = create_text_image(line, size, font_size)
-
-        clip = (
-            ImageClip(img)
-            .set_start(t)
-            .set_duration(1.2)
-            .fadein(0.3)
-            .fadeout(0.3)
-            .set_position("center")
-        )
-
-        clips.append(clip)
-        t += 1.2
-
-    return clips, t
-
-
-# ⏱ COUNTDOWN SOUND
-def create_beep():
-
-    from moviepy.audio.AudioClip import AudioClip
-    import numpy as np
-
-    def make_sound(t):
-        return 0.5 * np.sin(440 * 2 * np.pi * t)
-
-    return AudioClip(make_sound, duration=0.3)
-
-
-# 🎬 MAIN VIDEO
 def create_video(text, voice_path=None, mode="mobile"):
 
     BASE = os.path.dirname(__file__)
@@ -108,43 +33,58 @@ def create_video(text, voice_path=None, mode="mobile"):
         ["Follow for more brain tricks!"]
     ]
 
+    # 🔊 LOAD VOICE FIRST (CRITICAL FOR SYNC)
+    audio = None
+    if voice_path and os.path.exists(voice_path):
+        audio = AudioFileClip(voice_path)
+        total_audio_duration = audio.duration
+    else:
+        total_audio_duration = len(screens) * 2  # fallback
+
+    # 🎯 DISTRIBUTE TIME PROPERLY
+    per_screen_duration = total_audio_duration / len(screens)
+
     clips = []
     start = 0
 
     for lines in screens:
 
-        text_clips, duration = animate_lines(lines, (W, H), font_size)
+        # ✅ PASS DURATION HERE (THIS FIXES EVERYTHING)
+        text_clips, duration = animate_lines(
+            lines, (W, H), font_size, per_screen_duration
+        )
 
         if start + duration > bg.duration:
             sub_bg = bg.loop(duration=duration)
         else:
             sub_bg = bg.subclip(start, start + duration)
 
-        # 🔥 zoom effect
-        sub_bg = sub_bg.resize(lambda t: 1 + 0.03 * t)
+        # 🔥 Smooth zoom
+        sub_bg = sub_bg.resize(lambda t: 1 + 0.02 * t)
 
         video = CompositeVideoClip([sub_bg] + text_clips)
         clips.append(video)
 
         start += duration
 
-    final = concatenate_videoclips(clips)
+    final = concatenate_videoclips(clips, method="compose")
 
-    # 🔊 VOICE
-    if voice_path and os.path.exists(voice_path):
-        voice = AudioFileClip(voice_path)
-        voice = voice.volumex(1.2)
-        final = final.set_audio(voice)
+    # 🔊 PERFECT AUDIO SYNC
+    if audio:
+        audio = audio.set_duration(final.duration)
+        final = final.set_audio(audio)
 
-    # 🔊 BACKGROUND MUSIC
+    # 🔊 BACKGROUND MUSIC (LOW VOLUME)
     if os.path.exists(music_path):
-        music = AudioFileClip(music_path).volumex(0.2)
+        music = AudioFileClip(music_path).volumex(0.15)
 
-        if final.audio:
-            final.audio = final.audio.audio_loop(duration=final.duration)
-            final = final.set_audio(final.audio.volumex(1).fx(
-                lambda a: a
-            ))
+        if audio:
+            # mix voice + music
+            from moviepy.audio.AudioClip import CompositeAudioClip
+
+            music = music.audio_loop(duration=final.duration)
+            final_audio = CompositeAudioClip([audio, music])
+            final = final.set_audio(final_audio)
         else:
             music = music.audio_loop(duration=final.duration)
             final = final.set_audio(music)
