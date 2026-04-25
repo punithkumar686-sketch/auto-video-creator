@@ -1,4 +1,5 @@
 import os
+import time
 
 from moviepy.editor import (
     VideoFileClip,
@@ -11,8 +12,8 @@ from moviepy.editor import (
 from PIL import Image, ImageDraw, ImageFont
 
 
-# 🎨 CREATE TEXT IMAGE (FIXED)
-def create_text_image(text, size, font_size):
+# 🎨 CREATE WORD IMAGE
+def create_word_image(word, size, font_size):
 
     img = Image.new("RGBA", size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
@@ -22,51 +23,52 @@ def create_text_image(text, size, font_size):
     except:
         font = ImageFont.load_default()
 
-    # Highlight numbers
-    color = (255, 255, 0) if any(c.isdigit() for c in text) else (255, 255, 255)
+    # 🎯 highlight numbers
+    color = (255, 255, 0) if any(c.isdigit() for c in word) else (255, 255, 255)
 
-    bbox = draw.textbbox((0, 0), text, font=font)
+    bbox = draw.textbbox((0, 0), word, font=font)
     w = bbox[2] - bbox[0]
     h = bbox[3] - bbox[1]
 
     x = (size[0] - w) // 2
     y = (size[1] - h) // 2
 
-    draw.text((x, y), text, font=font, fill=color)
+    draw.text((x, y), word, font=font, fill=color)
 
-    path = f"/tmp/{abs(hash(text))}.png"
+    path = f"/tmp/{abs(hash(word + str(time.time())))}.png"
     img.save(path)
 
     return path
 
 
-# 🎬 ANIMATE TEXT (SYNCED)
-def animate_lines(lines, size, font_size, total_duration):
+# 🎬 WORD-BY-WORD ANIMATION
+def animate_words(sentence, size, font_size, duration):
 
+    words = sentence.split()
     clips = []
+
     t = 0
+    per_word = duration / max(len(words), 1)
 
-    per_line_duration = total_duration / len(lines)
-
-    for line in lines:
-        img = create_text_image(line, size, font_size)
+    for word in words:
+        img = create_word_image(word, size, font_size)
 
         clip = (
             ImageClip(img)
             .set_start(t)
-            .set_duration(per_line_duration)
-            .fadein(0.2)
-            .fadeout(0.2)
+            .set_duration(per_word)
+            .fadein(0.15)
+            .fadeout(0.15)
             .set_position("center")
         )
 
         clips.append(clip)
-        t += per_line_duration
+        t += per_word
 
-    return clips, total_duration
+    return clips
 
 
-# 🎬 MAIN VIDEO FUNCTION
+# 🎬 MAIN VIDEO
 def create_video(text, voice_path=None, mode="mobile"):
 
     BASE = os.path.dirname(__file__)
@@ -78,88 +80,59 @@ def create_video(text, voice_path=None, mode="mobile"):
     output_dir = os.path.join(ROOT, "output")
     os.makedirs(output_dir, exist_ok=True)
 
-    # ❗ SAFETY CHECK
     if not os.path.exists(bg_path):
-        raise FileNotFoundError(f"Background video not found: {bg_path}")
+        raise FileNotFoundError(f"Missing background video: {bg_path}")
 
     bg = VideoFileClip(bg_path)
 
-    # 📱 / 🖥 MODE
     if mode == "mobile":
         W, H = 1080, 1920
-        font_size = 70
-        filename = f"mobile_{os.getpid()}.mp4"
+        font_size = 75
+        filename = f"mobile_{int(time.time()*1000)}.mp4"
     else:
         W, H = 1920, 1080
-        font_size = 60
-        filename = f"desktop_{os.getpid()}.mp4"
+        font_size = 65
+        filename = f"desktop_{int(time.time()*1000)}.mp4"
 
     bg = bg.resize((W, H))
 
-    # 🎯 SCREENS
-    screens = [
-        ["Can you solve this", "in 3 seconds?", "Most kids can’t!"],
-        ["Try this:"],
-        ["47 + 25"],
-        ["Add 50 + 25 = 75"],
-        ["Then subtract 3 → 72"],
-        ["Boom! Faster than your teacher!"],
-        ["Follow for more brain tricks!"]
-    ]
+    # 🎯 SPLIT SCRIPT INTO LINES
+    lines = [l.strip() for l in text.split("\n") if l.strip()]
 
-    # 🔊 LOAD AUDIO
-    audio = None
-    if voice_path and os.path.exists(voice_path):
-        audio = AudioFileClip(voice_path)
-        total_audio_duration = audio.duration
-    else:
-        total_audio_duration = len(screens) * 2
-
-    per_screen_duration = total_audio_duration / len(screens)
+    total_duration = len(lines) * 1.8
+    per_line_duration = total_duration / len(lines)
 
     clips = []
     start = 0
 
-    for lines in screens:
+    for line in lines:
 
-        text_clips, duration = animate_lines(
-            lines, (W, H), font_size, per_screen_duration
+        # 🎬 animate words
+        text_clips = animate_words(
+            line, (W, H), font_size, per_line_duration
         )
 
-        # 🎥 BACKGROUND LOOP
-        if start + duration > bg.duration:
-            sub_bg = bg.loop(duration=duration)
+        if start + per_line_duration > bg.duration:
+            sub_bg = bg.loop(duration=per_line_duration)
         else:
-            sub_bg = bg.subclip(start, start + duration)
+            sub_bg = bg.subclip(start, start + per_line_duration)
 
-        # 🔥 ZOOM EFFECT
+        # 🔥 smooth zoom
         sub_bg = sub_bg.resize(lambda t: 1 + 0.02 * t)
 
         video = CompositeVideoClip([sub_bg] + text_clips)
-        clips.append(video)
+        video = video.set_duration(per_line_duration)
 
-        start += duration
+        clips.append(video)
+        start += per_line_duration
 
     final = concatenate_videoclips(clips, method="compose")
 
-    # 🔊 VOICE SYNC
-    if audio:
-        audio = audio.set_duration(final.duration)
-        final = final.set_audio(audio)
-
-    # 🔊 BACKGROUND MUSIC
+    # 🔊 BACKGROUND MUSIC ONLY
     if os.path.exists(music_path):
-        music = AudioFileClip(music_path).volumex(0.15)
-
-        from moviepy.audio.AudioClip import CompositeAudioClip
-
-        if audio:
-            music = music.audio_loop(duration=final.duration)
-            final_audio = CompositeAudioClip([audio, music])
-            final = final.set_audio(final_audio)
-        else:
-            music = music.audio_loop(duration=final.duration)
-            final = final.set_audio(music)
+        music = AudioFileClip(music_path).volumex(0.2)
+        music = music.audio_loop(duration=final.duration)
+        final = final.set_audio(music)
 
     output = os.path.join(output_dir, filename)
 
