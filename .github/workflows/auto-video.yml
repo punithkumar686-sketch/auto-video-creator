@@ -28,6 +28,9 @@ jobs:
       working-directory: src
       run: python main.py
 
+      - name: Check installed packages
+  run: pip list
+
     - name: Debug Files
       run: ls -R
 
