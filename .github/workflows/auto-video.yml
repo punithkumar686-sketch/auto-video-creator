@@ -22,7 +22,8 @@ jobs:
         pip install -r requirements.txt
 
     - name: Run Script
-      run: python -m src.main
+  working-directory: src
+  run: python main.py
 
     - name: Debug Files
       run: ls -R
