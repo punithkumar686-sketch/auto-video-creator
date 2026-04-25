@@ -2,10 +2,12 @@ from gtts import gTTS
 import os
 
 def generate_voice(text):
-    os.makedirs("../output", exist_ok=True)
-    file_path = "../output/voice.mp3"
+    output_dir = os.path.join("output")
+    os.makedirs(output_dir, exist_ok=True)
 
-    tts = gTTS(text=text, lang='en')
-    tts.save(file_path)
+    audio_path = os.path.join(output_dir, "audio.mp3")
 
-    return file_path
+    tts = gTTS(text=text, lang="en", slow=False)
+    tts.save(audio_path)
+
+    return audio_path
