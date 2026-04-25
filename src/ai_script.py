@@ -10,9 +10,7 @@ def generate_script():
 
     problems = [
         (47, 25),
-        (68, 37),
-        (59, 26),
-        (84, 19),
+        
     ]
 
     a, b = random.choice(problems)
