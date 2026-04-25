@@ -1,3 +1,6 @@
+import os
+
+os.makedirs("output", exist_ok=True)
 from ai_script import generate_script
 from video import create_video
 from voice import generate_voice
