@@ -9,6 +9,30 @@ from moviepy.editor import (
 )
 from PIL import Image, ImageDraw, ImageFont
 
+def animate_lines(lines, size, font_size, total_duration):
+
+    clips = []
+    t = 0
+
+    per_line_duration = total_duration / len(lines)
+
+    for line in lines:
+        img = create_text_image(line, size, font_size)
+
+        clip = (
+            ImageClip(img)
+            .set_start(t)
+            .set_duration(per_line_duration)
+            .fadein(0.2)
+            .fadeout(0.2)
+            .set_position("center")
+        )
+
+        clips.append(clip)
+        t += per_line_duration
+
+    return clips, total_duration
+
 def create_video(text, voice_path=None, mode="mobile"):
 
     BASE = os.path.dirname(__file__)
