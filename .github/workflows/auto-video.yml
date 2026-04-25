@@ -1,0 +1,32 @@
+name: Auto Video Creator
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.10
+
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y imagemagick
+        pip install -r requirements.txt
+
+    - name: Run Script
+      run: python src/main.py
+
+    - name: Upload Video
+      uses: actions/upload-artifact@v3
+      with:
+        name: video
+        path: output/video.mp4
