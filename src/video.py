@@ -1,8 +1,14 @@
-from moviepy.editor import VideoFileClip, ImageClip, CompositeVideoClip, concatenate_videoclips, AudioFileClip
+from moviepy.editor import (
+    VideoFileClip,
+    ImageClip,
+    CompositeVideoClip,
+    concatenate_videoclips,
+    AudioFileClip
+)
 from PIL import Image, ImageDraw, ImageFont
 import os
 
-# 🎨 Create text image
+# 🎨 TEXT IMAGE
 def create_text_image(text, size, font_size):
 
     img = Image.new("RGBA", size, (0, 0, 0, 0))
@@ -13,162 +19,143 @@ def create_text_image(text, size, font_size):
     except:
         font = ImageFont.load_default()
 
-    max_width = int(size[0] * 0.8)
+    color = (255, 255, 0) if any(c.isdigit() for c in text) else (255, 255, 255)
 
-    words = text.split()
-    lines = []
-    line = ""
+    bbox = draw.textbbox((0, 0), text, font=font)
+    w = bbox[2] - bbox[0]
+    h = bbox[3] - bbox[1]
 
-    for word in words:
-        test = line + word + " "
-        w = draw.textbbox((0, 0), test, font=font)[2]
-        if w < max_width:
-            line = test
-        else:
-            lines.append(line)
-            line = word + " "
-    lines.append(line)
+    x = (size[0] - w) // 2
+    y = (size[1] - h) // 2
 
-    final_text = "\n".join(lines)
+    draw.text((x, y), text, font=font, fill=color)
 
-    bbox = draw.multiline_textbbox((0, 0), final_text, font=font)
-    text_w = bbox[2] - bbox[0]
-    text_h = bbox[3] - bbox[1]
-
-    x = (size[0] - text_w) // 2
-    y = (size[1] - text_h) // 2
-
-    draw.multiline_text(
-        (x, y),
-        final_text,
-        font=font,
-        fill=(255, 255, 255),
-        align="center",
-        spacing=10
-    )
-
-    path = f"/tmp/text_{abs(hash(text))}.png"
+    path = f"/tmp/{abs(hash(text))}.png"
     img.save(path)
 
     return path
 
 
-# ⏱ Countdown animation
-def create_countdown(size, duration=3):
+# 🎬 WORD ANIMATION
+def animate_lines(lines, size, font_size):
 
     clips = []
-    for i in range(3, 0, -1):
-        img = Image.new("RGBA", size, (0, 0, 0, 0))
-        draw = ImageDraw.Draw(img)
+    t = 0
 
-        try:
-            font = ImageFont.truetype("DejaVuSans-Bold.ttf", 200)
-        except:
-            font = ImageFont.load_default()
+    for line in lines:
+        img = create_text_image(line, size, font_size)
 
-        text = str(i)
+        clip = (
+            ImageClip(img)
+            .set_start(t)
+            .set_duration(1.2)
+            .fadein(0.3)
+            .fadeout(0.3)
+            .set_position("center")
+        )
 
-        bbox = draw.textbbox((0, 0), text, font=font)
-        w = bbox[2] - bbox[0]
-        h = bbox[3] - bbox[1]
-
-        x = (size[0] - w) // 2
-        y = (size[1] - h) // 2
-
-        draw.text((x, y), text, font=font, fill=(255, 0, 0))
-
-        path = f"/tmp/count_{i}.png"
-        img.save(path)
-
-        clip = ImageClip(path).set_duration(1).fadein(0.3).fadeout(0.3)
         clips.append(clip)
+        t += 1.2
 
-    return concatenate_videoclips(clips)
+    return clips, t
 
 
-def create_video(text, audio_path=None, mode="mobile"):
+# ⏱ COUNTDOWN SOUND
+def create_beep():
 
-    BASE_DIR = os.path.dirname(__file__)
-    ROOT_DIR = os.path.abspath(os.path.join(BASE_DIR, ".."))
+    from moviepy.audio.AudioClip import AudioClip
+    import numpy as np
 
-    output_dir = os.path.join(ROOT_DIR, "output")
+    def make_sound(t):
+        return 0.5 * np.sin(440 * 2 * np.pi * t)
+
+    return AudioClip(make_sound, duration=0.3)
+
+
+# 🎬 MAIN VIDEO
+def create_video(text, voice_path=None, mode="mobile"):
+
+    BASE = os.path.dirname(__file__)
+    ROOT = os.path.abspath(os.path.join(BASE, ".."))
+
+    bg_path = os.path.join(ROOT, "assets", "background.mp4")
+    music_path = os.path.join(ROOT, "assets", "music.mp3")
+
+    output_dir = os.path.join(ROOT, "output")
     os.makedirs(output_dir, exist_ok=True)
-
-    bg_path = os.path.join(ROOT_DIR, "assets", "background.mp4")
-
-    if not os.path.exists(bg_path):
-        raise FileNotFoundError("Background video missing")
 
     bg = VideoFileClip(bg_path)
 
-    # 📱 / 🖥 resolution
     if mode == "mobile":
         W, H = 1080, 1920
         font_size = 70
-        filename = "mobile_video.mp4"
+        filename = f"mobile_{os.getpid()}.mp4"
     else:
         W, H = 1920, 1080
         font_size = 60
-        filename = "desktop_video.mp4"
+        filename = f"desktop_{os.getpid()}.mp4"
 
     bg = bg.resize((W, H))
 
-    # 🎬 Screens
+    # 🎯 SCREENS
     screens = [
-        ("Can you solve this in 3 seconds?\nMost kids can’t!", 2.5),
-        ("Try this:\n47 + 25", 2.5),
-        ("Instead of adding normally…\nAdd 50 + 25 = 75", 3),
-        ("Then subtract 3 → 72\nBoom! Faster than your teacher!\n\nFollow for more brain tricks!", 4),
+        ["Can you solve this", "in 3 seconds?", "Most kids can’t!"],
+        ["Try this:"],
+        ["47 + 25"],
+        ["Add 50 + 25 = 75"],
+        ["Then subtract 3 → 72"],
+        ["Boom! Faster than your teacher!"],
+        ["Follow for more brain tricks!"]
     ]
 
     clips = []
     start = 0
 
-    # ⏱ Add countdown FIRST
-    countdown = create_countdown((W, H))
-    clips.append(countdown)
+    for lines in screens:
 
-    for screen_text, duration in screens:
+        text_clips, duration = animate_lines(lines, (W, H), font_size)
 
-        end = start + duration
-
-        if end > bg.duration:
+        if start + duration > bg.duration:
             sub_bg = bg.loop(duration=duration)
         else:
-            sub_bg = bg.subclip(start, end)
+            sub_bg = bg.subclip(start, start + duration)
 
-        text_img = create_text_image(screen_text, (W, H), font_size)
+        # 🔥 zoom effect
+        sub_bg = sub_bg.resize(lambda t: 1 + 0.03 * t)
 
-        txt_clip = ImageClip(text_img).set_duration(duration).fadein(0.5)
-
-        video = CompositeVideoClip([
-            sub_bg.fadein(0.5),
-            txt_clip.set_position("center")
-        ])
-
+        video = CompositeVideoClip([sub_bg] + text_clips)
         clips.append(video)
+
         start += duration
 
-    final = concatenate_videoclips(clips, method="compose")
+    final = concatenate_videoclips(clips)
 
-    # 🔊 Audio
-    if audio_path and os.path.exists(audio_path):
-        audio = AudioFileClip(audio_path)
+    # 🔊 VOICE
+    if voice_path and os.path.exists(voice_path):
+        voice = AudioFileClip(voice_path)
+        voice = voice.volumex(1.2)
+        final = final.set_audio(voice)
 
-        if audio.duration < final.duration:
-            audio = audio.audio_loop(duration=final.duration)
+    # 🔊 BACKGROUND MUSIC
+    if os.path.exists(music_path):
+        music = AudioFileClip(music_path).volumex(0.2)
+
+        if final.audio:
+            final.audio = final.audio.audio_loop(duration=final.duration)
+            final = final.set_audio(final.audio.volumex(1).fx(
+                lambda a: a
+            ))
         else:
-            audio = audio.subclip(0, final.duration)
+            music = music.audio_loop(duration=final.duration)
+            final = final.set_audio(music)
 
-        final = final.set_audio(audio)
-
-    output_path = os.path.join(output_dir, filename)
+    output = os.path.join(output_dir, filename)
 
     final.write_videofile(
-        output_path,
+        output,
         fps=24,
         codec="libx264",
         audio_codec="aac"
     )
 
-    return output_path
+    return output
