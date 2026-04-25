@@ -35,3 +35,6 @@ jobs:
         with:
           name: viral-video
           path: output/
+
+          - name: Debug Files
+  run: ls -R
