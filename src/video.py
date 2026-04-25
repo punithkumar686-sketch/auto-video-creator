@@ -3,11 +3,12 @@ from PIL import Image, ImageDraw, ImageFont
 import os
 
 def create_video(text, audio_path=None):
-    # Output folder
-    output_dir = os.path.join(os.getcwd(), "output")
+    # FIXED OUTPUT PATH (works in GitHub Actions + local)
+    BASE_DIR = os.path.dirname(__file__)
+    output_dir = os.path.abspath(os.path.join(BASE_DIR, "..", "output"))
     os.makedirs(output_dir, exist_ok=True)
 
-    # Create vertical image (1080x1920)
+    # Create vertical image (Reels/Shorts format)
     img = Image.new('RGB', (1080, 1920), color=(0, 0, 0))
     draw = ImageDraw.Draw(img)
 
@@ -26,28 +27,30 @@ def create_video(text, audio_path=None):
         align="center"
     )
 
-    # Save image frame
+    # Save frame
     img_path = os.path.join(output_dir, "frame.png")
     img.save(img_path)
 
-    # Create video path
+    # Video output path
     video_path = os.path.join(output_dir, "video.mp4")
 
-    # Create clip
+    # Create video clip
     clip = ImageClip(img_path).set_duration(10)
 
-    # Add audio if exists
+    # Add audio safely
     audio = None
     if audio_path and os.path.exists(audio_path):
         audio = AudioFileClip(audio_path)
         clip = clip.set_audio(audio)
 
-    # 🔥 FIXED EXPORT (IMPORTANT)
+    # 🔥 SAFE + FIXED EXPORT (IMPORTANT FOR GITHUB)
     clip.write_videofile(
         video_path,
         fps=24,
         codec="libx264",
-        audio_codec="aac"
+        audio_codec="aac",
+        verbose=True,
+        logger="bar"
     )
 
     # Cleanup
@@ -55,7 +58,7 @@ def create_video(text, audio_path=None):
     if audio:
         audio.close()
 
-    print("Video saved at:", video_path)
-    print("Output files:", os.listdir(output_dir))
+    print("✅ Video saved at:", video_path)
+    print("📂 Output files:", os.listdir(output_dir))
 
     return video_path
