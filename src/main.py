@@ -7,6 +7,7 @@ def main():
     print("Script:", script)
 
     audio = generate_voice(script)
+
     video = create_video(script, audio)
 
     print("Video created:", video)
