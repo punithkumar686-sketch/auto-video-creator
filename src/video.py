@@ -3,11 +3,11 @@ from PIL import Image, ImageDraw, ImageFont
 import os
 
 def create_video(text, audio_path=None):
-    # Absolute safe output folder
+    # Output folder
     output_dir = os.path.join(os.getcwd(), "output")
     os.makedirs(output_dir, exist_ok=True)
 
-    # Create image (vertical video format)
+    # Create vertical image (1080x1920)
     img = Image.new('RGB', (1080, 1920), color=(0, 0, 0))
     draw = ImageDraw.Draw(img)
 
@@ -17,7 +17,7 @@ def create_video(text, audio_path=None):
     except:
         font = ImageFont.load_default()
 
-    # Draw text (basic centering)
+    # Draw text
     draw.multiline_text(
         (100, 800),
         text,
@@ -26,24 +26,36 @@ def create_video(text, audio_path=None):
         align="center"
     )
 
-    # Save frame
+    # Save image frame
     img_path = os.path.join(output_dir, "frame.png")
     img.save(img_path)
 
-    # Create video
+    # Create video path
     video_path = os.path.join(output_dir, "video.mp4")
+
+    # Create clip
     clip = ImageClip(img_path).set_duration(10)
 
     # Add audio if exists
-    if audio_path:
+    audio = None
+    if audio_path and os.path.exists(audio_path):
         audio = AudioFileClip(audio_path)
         clip = clip.set_audio(audio)
 
-    clip.write_videofile(video_path, fps=24)
+    # 🔥 FIXED EXPORT (IMPORTANT)
+    clip.write_videofile(
+        video_path,
+        fps=24,
+        codec="libx264",
+        audio_codec="aac"
+    )
 
-    # Cleanup (VERY IMPORTANT for GitHub Actions)
+    # Cleanup
     clip.close()
-    if audio_path:
+    if audio:
         audio.close()
+
+    print("Video saved at:", video_path)
+    print("Output files:", os.listdir(output_dir))
 
     return video_path
