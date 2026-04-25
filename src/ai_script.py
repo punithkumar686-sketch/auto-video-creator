@@ -2,18 +2,30 @@ import random
 
 def generate_script():
     hooks = [
-        "Only 1% can solve this!",
-        "Try this in 3 seconds!",
-        "Are you smarter than most?"
+        "You won’t believe this...",
+        "This will change how you think forever...",
+        "Most people don’t know this trick...",
+        "Watch this before it goes viral..."
     ]
 
-    questions = [
-        ("47 + 38 = ?", "85"),
-        ("15 × 6 = ?", "90"),
-        ("100 - 29 = ?", "71")
+    facts = [
+        "Your brain processes visuals 60,000x faster than text.",
+        "90% of people fail because they ignore consistency.",
+        "Small habits can change your entire life in 30 days.",
+        "Focus beats talent when talent doesn’t focus."
     ]
 
-    hook = random.choice(hooks)
-    q, a = random.choice(questions)
+    endings = [
+        "Follow for more viral insights.",
+        "This is why consistency wins.",
+        "Try this today and see the difference."
+    ]
 
-    return f"{hook}\n\n{q}\n\nAnswer: {a}"
+    script = f"""
+{random.choice(hooks)}
+
+{random.choice(facts)}
+
+{random.choice(endings)}
+"""
+    return script
