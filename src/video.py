@@ -12,7 +12,7 @@ from moviepy.editor import (
 from PIL import Image, ImageDraw, ImageFont
 
 
-# 🎨 CREATE WORD IMAGE
+# 🎨 CREATE WORD IMAGE (DARK TEXT + GLOW)
 def create_word_image(word, size, font_size):
 
     img = Image.new("RGBA", size, (0, 0, 0, 0))
@@ -23,8 +23,8 @@ def create_word_image(word, size, font_size):
     except:
         font = ImageFont.load_default()
 
-    # Highlight numbers
-    color = (255, 255, 0) if any(c.isdigit() for c in word) else (255, 255, 255)
+    text_color = (20, 20, 20)       # dark text
+    shadow_color = (255, 255, 255)  # glow
 
     bbox = draw.textbbox((0, 0), word, font=font)
     w = bbox[2] - bbox[0]
@@ -33,7 +33,11 @@ def create_word_image(word, size, font_size):
     x = (size[0] - w) // 2
     y = (size[1] - h) // 2
 
-    draw.text((x, y), word, font=font, fill=color)
+    # glow shadow
+    draw.text((x + 3, y + 3), word, font=font, fill=shadow_color)
+
+    # main text
+    draw.text((x, y), word, font=font, fill=text_color)
 
     path = f"/tmp/{abs(hash(word + str(time.time())))}.png"
     img.save(path)
@@ -47,7 +51,6 @@ def animate_words(sentence, size, font_size, duration):
     words = sentence.split()
     clips = []
 
-    # ⏱ slower pacing
     per_word = duration / max(len(words), 1)
     t = 0
 
@@ -57,10 +60,10 @@ def animate_words(sentence, size, font_size, duration):
         clip = (
             ImageClip(img)
             .set_start(t)
-            .set_duration(per_word + 0.3)  # linger effect
-            .fadein(0.25)
-            .fadeout(0.25)
-            .set_position("center")
+            .set_duration(per_word + 0.5)
+            .fadein(0.3)
+            .fadeout(0.3)
+            .set_position(("center", "center"))
         )
 
         clips.append(clip)
@@ -69,7 +72,7 @@ def animate_words(sentence, size, font_size, duration):
     return clips
 
 
-# 🎬 MAIN VIDEO
+# 🎬 MAIN VIDEO FUNCTION
 def create_video(text, voice_path=None, mode="mobile"):
 
     BASE = os.path.dirname(__file__)
@@ -86,40 +89,39 @@ def create_video(text, voice_path=None, mode="mobile"):
 
     bg = VideoFileClip(bg_path)
 
-    # 📱 / 🖥
+    # 📱 MOBILE / 🖥 DESKTOP SETTINGS
     if mode == "mobile":
         W, H = 1080, 1920
-        font_size = 80
+        font_size = int(W * 0.07)
         filename = f"mobile_{int(time.time()*1000)}.mp4"
     else:
         W, H = 1920, 1080
-        font_size = 70
+        font_size = int(H * 0.08)
         filename = f"desktop_{int(time.time()*1000)}.mp4"
 
     bg = bg.resize((W, H))
 
-    # 🎯 SPLIT INTO SCREENS
+    # 🎯 SPLIT SCRIPT INTO SCREENS
     lines = [l.strip() for l in text.split("\n") if l.strip()]
 
-    SCREEN_DURATION = 4  # 🔥 FIXED 4 SECONDS
+    SCREEN_DURATION = 6  # 🔥 slower = better retention
 
     clips = []
     start = 0
 
     for line in lines:
 
-        # 🎬 animate words
         text_clips = animate_words(
             line, (W, H), font_size, SCREEN_DURATION
         )
 
-        # 🎥 background loop
+        # 🎥 BACKGROUND LOOP
         if start + SCREEN_DURATION > bg.duration:
             sub_bg = bg.loop(duration=SCREEN_DURATION)
         else:
             sub_bg = bg.subclip(start, start + SCREEN_DURATION)
 
-        # 🔥 stronger zoom (viral feel)
+        # 🔥 SMOOTH ZOOM
         sub_bg = sub_bg.resize(lambda t: 1 + 0.04 * t)
 
         video = CompositeVideoClip([sub_bg] + text_clips)
@@ -130,7 +132,7 @@ def create_video(text, voice_path=None, mode="mobile"):
 
     final = concatenate_videoclips(clips, method="compose")
 
-    # 🔊 MUSIC ONLY
+    # 🔊 BACKGROUND MUSIC ONLY
     if os.path.exists(music_path):
         music = AudioFileClip(music_path).volumex(0.25)
         music = music.audio_loop(duration=final.duration)
