@@ -30,3 +30,6 @@ jobs:
   with:
     name: video
     path: output/video.mp4
+
+    - name: Check output
+  run: ls -R
