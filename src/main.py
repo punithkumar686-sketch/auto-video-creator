@@ -1,5 +1,5 @@
-from ai_script import generate_script
-from video import create_video
+from src.ai_script import generate_script
+from src.video import create_video
 
 def main():
     script = generate_script()
