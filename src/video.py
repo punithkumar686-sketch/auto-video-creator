@@ -3,7 +3,7 @@ import os
 
 def create_video(text, audio_path=None, mode="mobile"):
 
-    # 📁 PATH SETUP (GitHub safe)
+    # 📁 PATH SETUP
     BASE_DIR = os.path.dirname(__file__)
     ROOT_DIR = os.path.abspath(os.path.join(BASE_DIR, ".."))
 
@@ -12,14 +12,14 @@ def create_video(text, audio_path=None, mode="mobile"):
 
     bg_video_path = os.path.join(ROOT_DIR, "assets", "background.mp4")
 
-    # ❌ SAFETY CHECK
+    # ❌ Safety check
     if not os.path.exists(bg_video_path):
         raise FileNotFoundError(f"Background video not found at: {bg_video_path}")
 
-    # 🎬 LOAD BACKGROUND VIDEO
+    # 🎬 Load background
     bg = VideoFileClip(bg_video_path)
 
-    # 📱 / 🖥 RESOLUTION
+    # 📱 / 🖥 Resolution
     if mode == "mobile":
         W, H = 1080, 1920
         font_size = 70
@@ -31,7 +31,7 @@ def create_video(text, audio_path=None, mode="mobile"):
 
     bg = bg.resize((W, H))
 
-    # 🎯 SCREENS (VIRAL FLOW)
+    # 🎯 Screens (viral structure)
     screens = [
         ("Can you solve this in 3 seconds?\nMost kids can’t!", 2.5),
         ("Try this:\n47 + 25", 2.5),
@@ -42,25 +42,24 @@ def create_video(text, audio_path=None, mode="mobile"):
     clips = []
     start = 0
 
-    # 🎬 CREATE SCREEN CLIPS
+    # 🎬 Create each screen
     for screen_text, duration in screens:
 
         end = start + duration
 
-        # Loop background if needed
+        # Loop background if shorter than needed
         if end > bg.duration:
             sub_bg = bg.loop(duration=duration)
         else:
             sub_bg = bg.subclip(start, end)
 
-        # 🧠 TEXT (CENTERED + SAFE MARGIN)
+        # 🧠 TEXT (NO font= → avoids ImageMagick error)
         txt = TextClip(
             screen_text,
             fontsize=font_size,
             color="white",
-            font="DejaVu-Sans-Bold",
-            method="caption",
-            size=(int(W * 0.8), None),  # safe margin
+            method="caption",  # SAFE MODE
+            size=(int(W * 0.8), None),
             align="center"
         )
 
@@ -71,14 +70,14 @@ def create_video(text, audio_path=None, mode="mobile"):
 
         start += duration
 
-    # 🎞 MERGE ALL SCREENS
+    # 🎞 Merge clips
     final_video = concatenate_videoclips(clips, method="compose")
 
-    # 🔊 AUDIO HANDLING (OPTIONAL)
+    # 🔊 Add audio (optional)
     if audio_path and os.path.exists(audio_path):
         audio = AudioFileClip(audio_path)
 
-        # Loop audio to match video duration
+        # Match audio length to video
         if audio.duration < final_video.duration:
             audio = audio.audio_loop(duration=final_video.duration)
         else:
@@ -86,7 +85,7 @@ def create_video(text, audio_path=None, mode="mobile"):
 
         final_video = final_video.set_audio(audio)
 
-    # 🎥 EXPORT
+    # 🎥 Export
     video_path = os.path.join(output_dir, filename)
 
     final_video.write_videofile(
