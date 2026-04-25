@@ -8,61 +8,69 @@ def create_video(text, audio_path=None, mode="mobile"):
     output_dir = os.path.abspath(os.path.join(BASE_DIR, "..", "output"))
     os.makedirs(output_dir, exist_ok=True)
 
-    # 🧠 Choose resolution based on mode
+    # 📱 MOBILE vs 🖥 DESKTOP SETTINGS
     if mode == "mobile":
-        size = (1080, 1920)   # Shorts
-        filename = "video_mobile.mp4"
+        W, H = 1080, 1920
         font_size = 65
-        position = (80, 600)
-
+        video_name = "mobile_video.mp4"
+        duration = 10
     else:
-        size = (1920, 1080)   # Desktop
-        filename = "video_desktop.mp4"
-        font_size = 50
-        position = (200, 400)
+        W, H = 1920, 1080
+        font_size = 55
+        video_name = "desktop_video.mp4"
+        duration = 10
 
-    # 🎬 Create background
-    img = Image.new('RGB', size, color=(0, 0, 0))
+    # 🎬 BACKGROUND
+    img = Image.new("RGB", (W, H), (0, 0, 0))
     draw = ImageDraw.Draw(img)
 
-    # 🔤 Font
+    # 🔤 FONT
     try:
         font = ImageFont.truetype("DejaVuSans-Bold.ttf", font_size)
     except:
         font = ImageFont.load_default()
 
-    # 📝 Format text
-    formatted_text = f"""
+    # 🧠 VIRAL STRUCTURE
+    content = f"""
 ⏱ 3 SECOND CHALLENGE
 
 {text}
 """
 
+    # 📐 PERFECT CENTER ALIGNMENT LOGIC
+    bbox = draw.multiline_textbbox((0, 0), content, font=font, align="center")
+
+    text_width = bbox[2] - bbox[0]
+    text_height = bbox[3] - bbox[1]
+
+    x = (W - text_width) / 2
+    y = (H - text_height) / 2
+
+    # ✍️ DRAW TEXT (CENTERED PERFECTLY)
     draw.multiline_text(
-        position,
-        formatted_text,
+        (x, y),
+        content,
         font=font,
         fill=(255, 255, 255),
-        align="center"
+        align="center",
+        spacing=15
     )
 
-    # 💾 Save frame
+    # 💾 SAVE FRAME
     img_path = os.path.join(output_dir, "frame.png")
     img.save(img_path)
 
-    # 🎥 Video path
-    video_path = os.path.join(output_dir, filename)
+    # 🎥 OUTPUT VIDEO
+    video_path = os.path.join(output_dir, video_name)
 
-    # 🎞 Create clip
-    clip = ImageClip(img_path).set_duration(10)
+    clip = ImageClip(img_path).set_duration(duration)
 
-    # 🔊 Audio
-    audio = None
+    # 🔊 AUDIO
     if audio_path and os.path.exists(audio_path):
         audio = AudioFileClip(audio_path)
         clip = clip.set_audio(audio)
 
-    # 🚀 Export video
+    # 🚀 EXPORT (OPTIMIZED FOR VIRAL SHORTS)
     clip.write_videofile(
         video_path,
         fps=24,
