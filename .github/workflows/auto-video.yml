@@ -17,7 +17,12 @@ jobs:
 
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
-      - run: pip install moviepy pillow gtts
+      # ✅ REPLACED INSTALL STEP
+      - name: Install Python Packages
+        run: |
+          python -m pip install --upgrade pip
+          pip install moviepy==1.0.3
+          pip install pillow gtts numpy imageio imageio-ffmpeg
 
       - name: Run Bot
         working-directory: src
